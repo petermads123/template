@@ -180,22 +180,45 @@ def test_bump_unchanged_version_is_a_problem(repo_with_base: Path) -> None:
     ]
 
 
-def test_bump_must_match_the_brief(repo_with_base: Path) -> None:
-    folder = repo_with_base / "development" / "feat" / "x"
+def _brief(root: Path, branch: str, bump: str) -> None:
+    folder = root / "development" / branch
     folder.mkdir(parents=True)
-    (folder / "brief.json").write_text(
-        json.dumps({"feature": "x", "status": "review", "bump": "minor", "rounds": []}),
-        encoding="utf-8",
-    )
-    (repo_with_base / "pyproject.toml").write_text(
-        PYPROJECT.format(v="1.2.4"), encoding="utf-8"
-    )
+    data = {
+        "feature": branch.split("/")[-1],
+        "branch": branch,
+        "status": "review",
+        "bump": bump,
+        "rounds": [{"n": 1, "branch": f"{branch}--r1", "status": "merged"}],
+    }
+    (folder / "brief.json").write_text(json.dumps(data), encoding="utf-8")
+
+
+def _set_version(root: Path, version: str) -> None:
+    (root / "pyproject.toml").write_text(PYPROJECT.format(v=version), encoding="utf-8")
+
+
+def test_bump_must_match_this_branchs_brief(repo_with_base: Path) -> None:
+    _git(repo_with_base, "checkout", "-q", "-b", "feat/x")
+    _brief(repo_with_base, "feat/x", "minor")
+    _set_version(repo_with_base, "1.2.4")
     assert bump_problems(repo_with_base, "main") == [
         "version is 1.2.4; a minor bump from main's 1.2.3 is 1.3.0"
     ]
-    (repo_with_base / "pyproject.toml").write_text(
-        PYPROJECT.format(v="1.3.0"), encoding="utf-8"
-    )
+    _set_version(repo_with_base, "1.3.0")
+    assert bump_problems(repo_with_base, "main") == []
+
+
+def test_bump_follows_the_brief_from_a_round_branch(repo_with_base: Path) -> None:
+    _git(repo_with_base, "checkout", "-q", "-b", "feat/x--r1")
+    _brief(repo_with_base, "feat/x", "major")
+    _set_version(repo_with_base, "2.0.0")
+    assert bump_problems(repo_with_base, "main") == []
+
+
+def test_bump_ignores_other_features_briefs(repo_with_base: Path) -> None:
+    _git(repo_with_base, "checkout", "-q", "-b", "chore/tidy")
+    _brief(repo_with_base, "feat/old", "major")
+    _set_version(repo_with_base, "1.2.4")
     assert bump_problems(repo_with_base, "main") == []
 
 

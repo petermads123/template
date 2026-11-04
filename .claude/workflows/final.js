@@ -1,17 +1,17 @@
 export const meta = {
   name: 'final',
-  description: 'Whole-feature check before the pull request: full test gate, three concept checkers, two extras scouts',
+  description: 'Whole-feature check before the pull request: test gate, then three concept checkers and two extras scouts',
   whenToUse: 'Started by the /finish skill once every round has merged, never directly.',
   phases: [
     { title: 'Test gate', detail: 'full suite, ruff, mypy, check_sync', model: 'sonnet' },
-    { title: 'Concept check', detail: 'three lenses against BRIEF.md', model: 'sonnet' },
+    { title: 'Concept check', detail: 'three independent full checks against BRIEF.md', model: 'sonnet' },
     { title: 'Extras', detail: 'critical gaps and highest-value follow-ups', model: 'sonnet' },
   ],
 }
 
 // args (from /finish): { feature_dir, feature_branch }
 // Read-only: nothing here writes, commits or pushes. /finish acts on the result.
-// Returns { tests, checks: [{lens, pass, summary, findings}], extras: [...] }
+// Returns { tests, checks: [{checker, pass, summary, findings}], extras: [...], missing }
 
 const a = args || {}
 for (const key of ['feature_dir', 'feature_branch']) {
@@ -71,34 +71,47 @@ const EXTRAS = {
   required: ['extras'],
 }
 
-const LENSES = {
-  criteria: 'Is every feature-level acceptance criterion in BRIEF.md met? Cite the code or test proving each.',
-  purpose: 'Does the feature as a whole serve its goal in BRIEF.md, used the way a caller would use it? Try it.',
-  scope: 'Do the rounds fit together: nothing half-done, no round undoing another, nothing outside the BRIEF shipped by accident?',
-}
 const SCOUTS = {
   critical: 'Look for what would make shipping this feature wrong: unhandled ordinary inputs, broken promises of the BRIEF, security or data-loss risks. Report nothing rather than something minor.',
   value: 'Look for the few follow-ups that would add the most value to this feature for its users. Only the best two or three; none if nothing stands out.',
 }
+const CHECKERS = 3
 
+// The test gate runs first and alone: the checkers and scouts may run code, and a second
+// mypy or pytest in the same tree at the same time can fail for reasons of its own.
 phase('Test gate')
-const testsP = agent(
+const tests = await agent(
   `${CONTEXT}\nRun pytest (whole suite), ruff check, ruff format --check, mypy and python .claude/hooks/check_sync.py ` +
   '(the last one may report STRUCTURE.md, README and DEVLOG drift: that is expected before /finish writes them; ' +
   'report it separately in the summary and do not count it as a failure). Report exactly what fails.',
   { agentType: 'test-runner', model: 'sonnet', effort: 'low', schema: TEST_RUN, phase: 'Test gate', label: 'full gate' })
+const gate = tests ? `The test gate already ran: ${tests.passed ? 'green' : 'RED'}. ${tests.summary}` : 'The test gate did not report.'
 
-const checksP = parallel(Object.entries(LENSES).map(([lens, task]) => () =>
-  agent(`${CONTEXT}\nFeature-level concept check, lens "${lens}": ${task}\npass=false only for a real gap; mark those findings blocking.`,
-    { agentType: 'concept-checker', model: 'sonnet', effort: 'low', schema: VERDICT, phase: 'Concept check', label: `check: ${lens}` })
-    .then(v => v && { lens, ...v })))
+const checksP = parallel(Array.from({ length: CHECKERS }, (_, i) => () =>
+  agent(`${CONTEXT}\n${gate} Do not run mypy or the whole suite again; run the code and single tests as you need.\n` +
+    `You are feature concept checker ${i + 1} of ${CHECKERS}; the others check the same thing independently. ` +
+    'Do a full check of the whole feature against BRIEF.md:\n' +
+    '- Concept: does the feature as built match the BRIEF - every round delivered, the rounds fitting together, ' +
+    'nothing half-done, nothing outside the BRIEF shipped by accident?\n' +
+    '- Purpose: does it serve the goal, used the way a caller would use it? Run it.\n' +
+    '- Acceptance criteria: is every feature-level criterion (F1, F2, ...) met? Cite the code and the test for each.\n' +
+    'pass=false only for a real gap; mark those findings blocking.',
+    { agentType: 'concept-checker', model: 'sonnet', effort: 'low', schema: VERDICT, phase: 'Concept check', label: `check ${i + 1}` })
+    .then(v => v && { checker: i + 1, ...v })))
 
 const extrasP = parallel(Object.entries(SCOUTS).map(([lens, task]) => () =>
-  agent(`${CONTEXT}\nExtras scout, lens "${lens}": ${task}`,
+  agent(`${CONTEXT}\n${gate}\nExtras scout, lens "${lens}": ${task}`,
     { agentType: 'extras-scout', model: 'sonnet', effort: 'medium', schema: EXTRAS, phase: 'Extras', label: `extras: ${lens}` })
-    .then(r => r && r.extras.map(x => ({ ...x, lens })))))
+    .then(r => r && { lens, extras: r.extras.map(x => ({ ...x, lens })) })))
 
-const [tests, checks, extras] = await Promise.all([testsP, checksP, extrasP])
+const [checks, scouts] = await Promise.all([checksP, extrasP])
 const verdicts = checks.filter(Boolean)
-log(`tests ${tests && tests.passed ? 'green' : 'red'}; concept ${verdicts.filter(v => v.pass).length}/${verdicts.length} pass`)
-return { tests, checks: verdicts, extras: extras.filter(Boolean).flat() }
+const scoutsBack = scouts.filter(Boolean)
+// Nothing missing may read as a pass: /finish holds the pull request while anything here is missing.
+const missing = {
+  tests: !tests,
+  checks: CHECKERS - verdicts.length,
+  scouts: Object.keys(SCOUTS).filter(l => !scoutsBack.some(s => s.lens === l)),
+}
+log(`tests ${tests ? (tests.passed ? 'green' : 'red') : 'missing'}; concept ${verdicts.filter(v => v.pass).length}/${verdicts.length} pass`)
+return { tests, checks: verdicts, extras: scoutsBack.flatMap(s => s.extras), missing }

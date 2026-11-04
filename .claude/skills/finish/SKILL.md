@@ -15,14 +15,24 @@ needs no confirmation when everything passes; a critical extra holds it for the 
 Call the Workflow tool with `scriptPath: ".claude/workflows/final.js"` and `args`
 `{ "feature_dir": "development/<branch>", "feature_branch": "<branch>" }`. This skill
 instructs you to run it: that is the opt-in it needs. It is read-only and returns the test
-gate, three concept verdicts and the extras.
+gate, three independent concept verdicts, the extras, and `missing`. It runs in the
+background; when it completes, invoke `/finish` again and continue here.
 
-- **Tests red, or fewer than two of three concept checks pass** — add a fix round to
-  `brief.json` (`name` "Final fixes", the failures and blocking findings in its summary and
-  in `BRIEF.md` under Rounds), set status back to `rounds`, commit, push, and invoke `/round`.
-  If the feature already had a "Final fixes" round, do not add another: tell the user what
-  still fails and ask.
-- **Green** — go on.
+- **Anything in `missing`** (no test result, fewer than three verdicts, a scout that did not
+  return) — run the workflow once more. Still missing: tell the user and hold the pull
+  request. A missing result is never read as a pass.
+- **Tests red, or fewer than two of the three concept checks pass** — add a fix round (below)
+  named "Final fixes", the failures and blocking findings as its summary and in `BRIEF.md`
+  under Rounds. If the feature already had a "Final fixes" round, do not add another: tell the
+  user what still fails and ask.
+- **Green, with a majority passing** — go on. Blocking findings from a dissenting checker are
+  shown to the user with the extras in step 5.
+
+### Adding a round
+
+Write the new entry in full: `n` = the last round's + 1, `name`, `slug` (kebab-case),
+`branch` `<branch>--r<n>`, `status` `planned`, `summary`. Set `current_round` to n and
+`status` to `rounds` in the same commit, push, and invoke `/round`.
 
 ## 2. Extras
 
@@ -30,7 +40,7 @@ Merge the scouts' extras: drop duplicates, keep at most five, best first.
 
 - **Any extra marked critical** — keep the pull request closed. Show the critical ones with
   their reasons and ask with `AskUserQuestion` whether to add a round for them, ship anyway,
-  or drop them. A new round goes through `brief.json` and `/round` as in step 1.
+  or drop them. A new round is added as above.
 - **None critical** — go on; the list is shown after the pull request opens.
 
 ## 3. Version and documents

@@ -33,6 +33,9 @@ rounds.
 
 ## B. Concept (waits for the user)
 
+A skill's model holds for the turn that invokes it, and this stage spans several turns:
+invoke `/feature` again at the start of each turn of the conversation until round 1 starts.
+
 Keep every reply short — three to six lines — so the conversation moves. Ask one or two
 questions at a time, not a questionnaire. Settle:
 
@@ -56,7 +59,8 @@ Then put the three to the user in one short summary and end the turn on the ques
 
 A hosted session that starts on a `claude/<words>` branch commits nothing there: branch the
 agreed name off `main`. Only if pushing that name is refused, fall back to the session's
-branch and record the real name in `brief.json`'s `branch`.
+branch and record the real name in `brief.json`'s `branch`; the folder keeps the agreed
+name. Rounds then run on that branch directly (`/round` section 2 says how).
 
 ## D. Narrow it down (waits for the user)
 

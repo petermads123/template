@@ -33,9 +33,10 @@ The version lives in `pyproject.toml` and is repeated in `README.md` and the new
 | `minor` | x.**Y**.0 | new features inside existing frameworks, new endpoints | keep working unchanged |
 | `patch` | x.y.**Z** | fixes, docstrings, refactors that change no behaviour | keep working unchanged |
 
-The test for `major` is compatibility, not size: anything that can make an existing caller
-fail — a removed or renamed endpoint, a changed return type, a new required parameter — is
-`major`, however small. A feature takes the largest bump any of its rounds needs. The bump is
+`major` is for a big new feature or package, **or** anything that can make an existing
+caller fail — a removed or renamed endpoint, a changed return type, a new required
+parameter — however small. `minor` is for new features and endpoints that break nothing;
+`patch` for fixes and docstrings. A feature takes the largest bump any of its rounds needs. The bump is
 agreed at `/feature` and written by `/finish`, counted from `main`'s version at that moment.
 
 ## The feature pipeline
@@ -54,7 +55,8 @@ development/<branch>/            e.g. development/feat/csv-export/
 ```
 
 `development/README.md` documents the two JSON schemas. `brief.json` is written only by the
-main session and `round.json` only by the round's steps.
+main session and `round.json` by the round's steps (and by `/round` only to record a stop the
+workflow script could not write itself).
 
 | Stage | Skill | Runs as | Waits for |
 |---|---|---|---|
@@ -79,13 +81,22 @@ pushes its output with `round.json` advanced.
 | 5 | Test design, four lenses in parallel | `test-designer` × 4 | Sonnet low |
 | 6 | Write tests | `test-writer` | Sonnet medium |
 | 7 | Run tests: the full gate | `test-runner` | Sonnet low |
-| 8 | Concept check, three lenses, two of three must pass | `concept-checker` × 3 | Sonnet low |
+| 8 | Concept check: three independent full checks (concept, purpose, criteria), majority passes | `concept-checker` × 3 | Sonnet low |
 | 9 | Close: merge into the feature branch | `round-closer` | Sonnet medium |
 
 A failing gate (steps 7 and 8) goes back to the `implementer` in fix mode, twice at most per
-round; after that the round escalates. A step that meets something genuinely unclear stops the
+round, counted across resumes; every fix sends the round back through the test gate, and
+after two the round escalates. A step that meets something genuinely unclear stops the
 round with a question; the main session answers it from the BRIEF when it can, asks the user
 when it cannot, and resumes the round at that step.
+
+A skill's pinned model holds for the turn that invokes it. Stages that span turns re-invoke
+their skill: `/round` when its workflow completes, `/feature` on each turn of the
+conversation, `/finish` when the final workflow completes.
+
+If a hosted session may push only its own branch, the feature and its rounds run on that one
+branch: `/round` records the round's `branch` as the feature branch and the workflow skips
+the merge.
 
 ### Opening the pull request
 

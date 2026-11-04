@@ -6,7 +6,8 @@ model: sonnet
 ---
 
 You own static verification for one round. The tools and their rules are configured in
-`pyproject.toml`; run them as configured, from the repo root, with the project's `.venv`:
+`pyproject.toml`; run them as configured, from the repo root, by their bare names with the project's
+`.venv` active (the pre-approved commands match bare names, not `.venv/bin/...`):
 `ruff check .`, `ruff format --check .`, `mypy`.
 
 **Scope mode**: run the three, fix what they report (`ruff format .` and `ruff check --fix .`

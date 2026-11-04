@@ -15,8 +15,8 @@ Checks:
   `.claude/hooks/`, and names no Python file that does not exist.
 - Every `brief.json` and `round.json` under `development/` parses and uses known
   statuses.
-- With `--base`, the version is above the base's, by the bump a live or reviewed
-  brief on this branch names.
+- With `--base`, the version is above the base's: by exactly the bump this
+  branch's brief names, or by any raise on a branch with no brief.
 
 It is not a Stop hook on purpose: during a feature, `STRUCTURE.md`, the README and
 the DEVLOG are written only at the end, by `/finish`, so mid-feature drift is
@@ -38,7 +38,9 @@ from dev_state import (
     FEATURE_STATUSES,
     ROUND_STATUSES,
     STEP_STATUSES,
+    Brief,
     all_briefs,
+    current_branch,
 )
 
 VERSION_RE = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
@@ -216,8 +218,9 @@ def state_problems(project_dir: Path) -> list[str]:
 def bump_problems(project_dir: Path, base: str) -> list[str]:
     """Check the version was raised above the base's by the brief's bump.
 
-    The bump comes from the brief that is live or in review on this branch. With
-    none, any raise passes; a branch need not be a feature.
+    The bump comes from this branch's own brief (see `branch_brief`). With none,
+    any raise passes: a `chore/` branch is not a feature. Briefs of features merged
+    earlier stay on `main` at status `review` and must never decide it.
 
     Args:
         project_dir: Repository root.
@@ -243,18 +246,36 @@ def bump_problems(project_dir: Path, base: str) -> list[str]:
     new, old = parse_version(ours), parse_version(theirs)
     if new is None or old is None:
         return []  # version_problems reports a malformed version
-    briefs = [b for b in all_briefs(project_dir) if b.status in ("final", "review")]
-    if briefs and briefs[0].bump in BUMPS:
-        expected = bumped(old, briefs[0].bump)
+    brief = branch_brief(project_dir, current_branch(project_dir))
+    if brief is not None and brief.bump in BUMPS:
+        expected = bumped(old, brief.bump)
         if new != expected:
             want = ".".join(map(str, expected))
             return [
-                f"version is {ours}; a {briefs[0].bump} bump from {base}'s {theirs} is {want}"
+                f"version is {ours}; a {brief.bump} bump from {base}'s {theirs} is {want}"
             ]
         return []
     if new <= old:
         return [f"version {ours} is not above {base}'s {theirs}"]
     return []
+
+
+def branch_brief(project_dir: Path, branch: str) -> Brief | None:
+    """The brief of the feature whose branch, or one of whose rounds, is `branch`.
+
+    Args:
+        project_dir: Repository root.
+        branch: The checked-out branch.
+
+    Returns:
+        That brief, or None when no brief belongs to the branch.
+    """
+    if not branch:
+        return None
+    for brief in all_briefs(project_dir):
+        if brief.branch == branch or any(r.branch == branch for r in brief.rounds):
+            return brief
+    return None
 
 
 def problems(project_dir: Path, base: str = "") -> list[str]:

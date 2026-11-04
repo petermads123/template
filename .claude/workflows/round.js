@@ -24,6 +24,10 @@ export const meta = {
 //   round_branch    feat/csv-export--r1   (checked out before the run)
 //   start_step      1..9, where to begin; earlier steps are already done
 //   answers         [{ step, question, answer }] from earlier escalations
+//   attempt         fix attempts already spent this round (round.json "attempt"), default 0
+//
+// When this returns needs_input or failed, round.json may not say so yet (the script itself
+// cannot write files): /round records it before doing anything else.
 //
 // Returns one of:
 //   { status: 'merged', summary, merge_commit }
@@ -37,13 +41,17 @@ const STEPS = [
 ]
 const MAX_FIX_ATTEMPTS = 2
 const TEST_LENSES = ['input-space', 'contract', 'failure-paths', 'integration']
-const CHECK_LENSES = ['criteria', 'purpose', 'scope']
+const CHECKERS = 3
 
 const a = args || {}
 for (const key of ['feature_dir', 'round_dir', 'round', 'feature_branch', 'round_branch']) {
   if (a[key] === undefined || a[key] === '') throw new Error(`round workflow: missing args.${key}`)
 }
-const START = Math.max(1, Math.min(9, a.start_step || 1))
+const START = Number(a.start_step === undefined ? 1 : a.start_step)
+if (!Number.isInteger(START) || START < 1 || START > 9) {
+  throw new Error(`round workflow: start_step must be 1..9, got ${a.start_step}`)
+}
+const SAME_BRANCH = a.round_branch === a.feature_branch
 const ANSWERS = Array.isArray(a.answers) ? a.answers : []
 
 const RESULT = {
@@ -138,7 +146,10 @@ const VERDICT = {
 const CONTEXT = [
   `Round ${a.round} of the feature in ${a.feature_dir}/ (read BRIEF.md and brief.json there).`,
   `This round's folder: ${a.round_dir}/ (log.md is its notepad, round.json its status).`,
-  `Branch ${a.round_branch} is checked out; it merges into ${a.feature_branch} at the Close step.`,
+  SAME_BRANCH
+    ? `Branch ${a.round_branch} is checked out; this round runs directly on the feature branch (no round branch).`
+    : `Branch ${a.round_branch} is checked out; it merges into ${a.feature_branch} at the Close step.`,
+  'Run ruff, mypy and pytest by their bare names (or python -m ...) with the project\'s .venv active.',
   'STRUCTURE.md is only rewritten when the feature finishes: for what earlier rounds added, read the',
   '"Changes" sections of the earlier rounds\' log.md files in the feature folder.',
 ].join('\n')
@@ -157,7 +168,8 @@ function stateRules(step, next) {
   return [
     'Before you return:',
     `- On success: ${done}, "attempt" to 0, "question" to "", "note" to one line on what you did,`,
-    `  and append a "## ${step}. ${STEPS[step - 1]}" section to log.md with what you produced.`,
+    `  and append a "## ${step}. ${STEPS[step - 1]}" section to log.md with what you produced`,
+    '  (if a resumed run finds that section already there, add to it rather than repeat the heading).',
     '- On a question (only for something genuinely unclear that the brief, the log and the answers',
     '  above do not settle): set round.json "status" to "blocked" and "question" to the question,',
     '  note in log.md what you were doing, and return status "question".',
@@ -199,10 +211,12 @@ const trace = (step, r) => {
   }
 }
 
-let attempts = 0
+let attempts = Number.isInteger(a.attempt) && a.attempt > 0 ? a.attempt : 0
 let checkReport = ''
 
-// A failing gate sends its findings to the implementer, at most MAX_FIX_ATTEMPTS times per round.
+// A failing gate (step 7 or 8) sends its findings to the implementer, at most MAX_FIX_ATTEMPTS
+// times per round, counted across resumes. After a fix round.json goes back to step 7, so a
+// resumed run always re-runs the test gate on the fixed code before anything is checked again.
 async function fix(step, what, findings) {
   attempts += 1
   if (attempts > MAX_FIX_ATTEMPTS) {
@@ -212,12 +226,18 @@ async function fix(step, what, findings) {
       question: `${what} keeps failing after ${MAX_FIX_ATTEMPTS} fixes. Findings:\n${findings}\nHow should the round proceed?`,
     }
   }
-  const r = await run(step, 'implementer',
+  const r = await agent(prompt(step,
     `FIX MODE (attempt ${attempts}/${MAX_FIX_ATTEMPTS}). ${what} failed. Fix the root cause in the code.\n` +
     'Change a test only when the test itself is wrong, and say why in log.md; never weaken or delete a case to get green.\n' +
-    `Findings:\n${findings}\n` +
-    `Record the attempt in round.json "attempt" (${attempts}).`,
-    { next: step, label: `fix ${attempts}` })
+    `Findings:\n${findings}\n\n` +
+    'Before you return:\n' +
+    `- Append a "### Fix ${attempts}" subsection under the "## ${step}. ${STEPS[step - 1]}" section of log.md (create the ` +
+    'section if missing): the findings in brief, the root cause, what you changed.\n' +
+    `- Set round.json "step" to 7, "status" to "running", "attempt" to ${attempts}, "question" to "", "note" to one line.\n` +
+    '- On a question or an unresolvable failure, use "blocked"/"failed" as in any step, keeping "attempt".\n' +
+    `- git add, commit "round ${a.round} fix ${attempts}: <what>", git push -u origin ${a.round_branch}.`,
+    null),
+    { agentType: 'implementer', model: 'sonnet', effort: 'medium', schema: RESULT, phase: STEPS[step - 1], label: `fix ${attempts}` })
   trace(step, r)
   return r
 }
@@ -295,8 +315,11 @@ if (START <= 6) {
     log(`test design: ${cases.length} cases from ${designs.filter(Boolean).length}/${TEST_LENSES.length} designers`)
   }
   const r = await run(6, 'test-writer',
-    'First set round.json "step" to 6 with note "writing tests", append a "## 5. Test design" section to log.md ' +
-    'listing the cases below (deduplicated), and commit. Then write the tests in tests/, one test_<module>.py per ' +
+    (START <= 5
+      ? 'First set round.json "step" to 6 with note "writing tests", append a "## 5. Test design" section to log.md ' +
+        'listing the cases below (deduplicated), and commit. Then write the tests'
+      : 'This is a resumed run: the test design is already in log.md under "## 5. Test design". Write the tests') +
+    ' in tests/, one test_<module>.py per ' +
     'module, covering the plan\'s test intents and the cases. Run them once; failures are expected to surface ' +
     'bugs — do not change production code here.\n' +
     `Cases:\n${cases.length ? cases.map(c => `- [${c.priority}] ${c.target}: ${c.case}; inputs ${c.inputs || '-'}; expect ${c.expected}`).join('\n') : '(designers returned none: derive cases from the test intents; if resuming, the cases are in log.md)'}`)
@@ -309,8 +332,9 @@ async function runTests() {
   for (;;) {
     const t = await run(7, 'test-runner',
       'Run the full gate: pytest (whole suite), ruff check, ruff format --check, mypy. Report exactly what fails. ' +
-      'Do not fix anything. Append the result to log.md under "## 7. Run tests". ' +
-      'If everything passes set round.json "step" to 8; otherwise leave it at 7. Commit and push either way.',
+      'Do not fix anything. Append the result to log.md under "## 7. Run tests" (one dated line per run). ' +
+      'In round.json set "status" to "running", "question" to "", "note" to the result in one line, and "step" to 8 ' +
+      `if everything passed, else 7. Commit "round ${a.round} step 7: <result>" and git push -u origin ${a.round_branch} either way.`,
       { schema: TEST_RUN, model: 'sonnet', effort: 'low', next: null, label: 'run tests' })
     if (!t) return { status: 'fail', summary: 'the test runner did not return' }
     log(`run tests: ${t.passed ? 'green' : 'red'} - ${t.summary.split('\n')[0]}`)
@@ -327,23 +351,33 @@ if (START <= 8) {
       trace(7, t)
       if (!ok(t)) return stop(7, t)
     }
-    const verdicts = (await parallel(CHECK_LENSES.map(lens => () =>
+    const verdicts = (await parallel(Array.from({ length: CHECKERS }, (_, i) => () =>
       agent(prompt(8,
-        `Read-only. Concept check through the "${lens}" lens:\n` +
-        '- criteria: is every acceptance criterion of the round concept met? Cite the code or test that proves each.\n' +
-        '- purpose: does the result actually serve the round\'s goal and the feature in BRIEF.md, as a user would use it?\n' +
-        '- scope: did the round stay inside its scope, break nothing earlier rounds delivered, and leave nothing half-done?\n' +
-        `Answer for your lens ("${lens}") in depth, and briefly for the other two. pass=false only for a real gap; ` +
-        'mark those findings blocking.',
+        `Read-only. You are concept checker ${i + 1} of ${CHECKERS}; the others check the same thing independently. ` +
+        'Do a full check of the round against its concept (log.md, "## 1. Conceptualize") and BRIEF.md:\n' +
+        '- Concept: does the result implement the round concept as agreed - in scope done, out of scope left alone, ' +
+        'nothing earlier rounds delivered broken?\n' +
+        '- Purpose: does it serve the round\'s goal and the feature, used the way a caller would use it? Run it.\n' +
+        '- Acceptance criteria: is every AC met? Cite the code and the test that prove each one.\n' +
+        'pass=false only for a real gap; mark those findings blocking, each with what would close it.',
         null),
-        { agentType: 'concept-checker', model: 'sonnet', effort: 'low', schema: VERDICT, phase: 'Concept check', label: `check: ${lens}` })))).filter(Boolean)
+        { agentType: 'concept-checker', model: 'sonnet', effort: 'low', schema: VERDICT, phase: 'Concept check', label: `check ${i + 1}` })
+        .then(v => v && { checker: i + 1, ...v })))).filter(Boolean)
+    if (verdicts.length < 2) {
+      return stop(8, { status: 'fail', summary: `only ${verdicts.length} of ${CHECKERS} concept checkers returned` })
+    }
     const passes = verdicts.filter(v => v.pass).length
-    checkReport = verdicts.map((v, i) => `- ${CHECK_LENSES[i] || '?'}: ${v.pass ? 'pass' : 'FAIL'}. ${v.summary}`).join('\n')
+    checkReport = verdicts.map(v =>
+      `- checker ${v.checker}: ${v.pass ? 'pass' : 'FAIL'}. ${v.summary}` +
+      v.findings.filter(f => f.severity === 'blocking').map(f => `\n  - blocking: ${f.where}: ${f.issue}`).join('')).join('\n')
     log(`concept check: ${passes}/${verdicts.length} pass`)
-    if (verdicts.length >= 2 && passes >= 2) break
+    // Three independent full checks: the majority decides. A dissenting checker's blocking
+    // findings still go on the record (log.md, via the closer) for /finish and the user.
+    if (passes * 2 > verdicts.length) break
     const blocking = verdicts.filter(v => !v.pass).flatMap(v => v.findings.filter(f => f.severity === 'blocking'))
     const f = await fix(8, 'The concept check',
-      blocking.map(b => `- ${b.where}: ${b.issue}${b.fix ? ` -> ${b.fix}` : ''}`).join('\n') || checkReport)
+      (blocking.map(b => `- ${b.where}: ${b.issue}${b.fix ? ` -> ${b.fix}` : ''}`).join('\n') || '(no blocking findings given)') +
+      `\nVerdicts:\n${checkReport}`)
     if (!ok(f)) return stop(8, f)
   }
 }
@@ -359,11 +393,18 @@ const CLOSE = {
   },
   required: ['status', 'summary'],
 }
-const close = await run(9, 'round-closer',
-  'Close the round. First set round.json "step" to 9 and append "## 8. Concept check" to log.md with the verdicts ' +
-  `below, then commit and push. Then merge ${a.round_branch} into ${a.feature_branch} as the agent instructions say.\n` +
+const close = await agent(prompt(9,
+  'Close the round, in this order (round-closer.md has the details):\n' +
+  `1. On ${a.round_branch}: set round.json "step" to 9, "status" to "done", "attempt" to 0, "question" to "", ` +
+  '"note" to "merged"; append "## 8. Concept check" (the verdicts below; if a resumed run finds it there, leave it) ' +
+  `and "## 9. Close" to log.md; commit "round ${a.round} step 9: close" and git push -u origin ${a.round_branch}.\n` +
+  (SAME_BRANCH
+    ? '2. This round runs on the feature branch itself: there is nothing to merge or delete. Return the commit hash.\n'
+    : `2. Merge ${a.round_branch} into ${a.feature_branch}, push ${a.feature_branch}, delete ${a.round_branch}.\n` +
+      '3. After the merge write and commit nothing more. On a conflict follow the blocked path in round-closer.md.\n') +
   `Concept check verdicts:\n${checkReport || '(recorded in log.md by an earlier run)'}`,
-  { schema: CLOSE, next: 10 })
+  null),
+  { agentType: 'round-closer', model: 'sonnet', effort: 'medium', schema: CLOSE, phase: 'Close', label: 'close' })
 trace(9, close)
 if (!ok(close)) return stop(9, close)
 

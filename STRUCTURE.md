@@ -86,7 +86,8 @@ Checks the documents agree with each other and with the code. Run by `/finish` a
 | `version_problems(project_dir: Path) -> list[str]` | pyproject, README `**Version:**` and newest DEVLOG entry disagree; DEVLOG order. |
 | `structure_problems(project_dir: Path) -> list[str]` | Python files missing from STRUCTURE.md, or named but absent. |
 | `state_problems(project_dir: Path) -> list[str]` | Unparseable state files, unknown statuses. |
-| `bump_problems(project_dir: Path, base: str) -> list[str]` | Version not raised above `base`'s by the brief's bump. |
+| `branch_brief(project_dir: Path, branch: str) -> Brief \| None` | The brief whose feature or round branch is `branch`. |
+| `bump_problems(project_dir: Path, base: str) -> list[str]` | Version not raised above `base`'s by this branch's brief's bump (any raise without one). |
 | `problems(project_dir: Path, base: str = "") -> list[str]` | All of the above. |
 | `main() -> None` | CLI: `[--base REF] [--root DIR]`; prints problems, exits 1 if any. |
 
@@ -134,8 +135,8 @@ switches chained with `&&`). Vendored from `template_repo`.
 | `skills/feature/` | `/feature`: Main Conceptualize (Opus medium), background `repo-scout`s, BRIEF, starts round 1 |
 | `skills/round/` | `/round`: coordinates one round (Sonnet high), runs `workflows/round.js`, answers or escalates questions |
 | `skills/finish/` | `/finish`: runs `workflows/final.js`, extras, `docs-writer`, version, pull request |
-| `workflows/round.js` | The nine round steps; args `feature_dir`, `round_dir`, `round`, `feature_branch`, `round_branch`, `start_step`, `answers`; returns `merged`, `needs_input` or `failed` |
-| `workflows/final.js` | Read-only whole-feature check: test gate, three concept lenses, two extras lenses |
+| `workflows/round.js` | The nine round steps; args `feature_dir`, `round_dir`, `round`, `feature_branch`, `round_branch`, `start_step`, `attempt`, `answers`; returns `merged`, `needs_input` or `failed` |
+| `workflows/final.js` | Read-only whole-feature check: test gate first, then three independent concept checks and two extras scouts; returns `tests`, `checks`, `extras`, `missing` |
 | `agents/repo-scout.md` | Read-only investigation for `/feature`, one angle each |
 | `agents/round-conceptualizer.md`, `round-planner.md` | Round steps 1 and 2 (Opus) |
 | `agents/implementer.md` | Step 3, and fix mode for failing gates |

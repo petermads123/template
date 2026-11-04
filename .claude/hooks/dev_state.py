@@ -35,7 +35,7 @@ GIT_TIMEOUT_SECONDS = 10
 # carries a live marker once it merges.
 LIVE_STATUSES = ("concept", "rounds", "final")
 FEATURE_STATUSES = (*LIVE_STATUSES, "review", "parked")
-ROUND_STATUSES = ("planned", "running", "blocked", "failed", "merged")
+ROUND_STATUSES = ("planned", "running", "failed", "merged")
 STEP_STATUSES = ("running", "blocked", "failed", "done")
 
 # The round's steps, in order. `round.json` repeats them so a mod needs no copy.
