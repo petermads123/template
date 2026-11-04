@@ -13,7 +13,7 @@ src/template/           the package (rename for a new repo)
 tests/                  pytest suite, one test_<module>.py per module
 development/            the pipeline's state: one folder per feature branch (see its README)
 .claude/
-  skills/               /feature, /round, /finish
+  skills/               /feature, /round, /finish; /setup until a new repo has run it
   agents/               the pipeline's agents, one file each
   workflows/            round.js (one round), final.js (the whole-feature check)
   hooks/                session brief, git guard, Ruff on edit, state reader, sync checker
@@ -134,6 +134,7 @@ switches chained with `&&`). Vendored from `template_repo`.
 |---|---|
 | `skills/feature/` | `/feature`: Main Conceptualize (Opus medium), background `repo-scout`s, BRIEF, starts round 1 |
 | `skills/round/` | `/round`: coordinates one round (Sonnet high), runs `workflows/round.js`, answers or escalates questions |
+| `skills/setup/` | `/setup`: one-time setup of a repo made from the template (purpose, package rename, approver, version 0.1.0, ruleset from its `main_protect.*.json`); deletes itself when done |
 | `skills/finish/` | `/finish`: runs `workflows/final.js`, extras, `docs-writer`, version, pull request |
 | `workflows/round.js` | The nine round steps; args `feature_dir`, `round_dir`, `round`, `feature_branch`, `round_branch`, `start_step`, `attempt`, `answers`; returns `merged`, `needs_input` or `failed` |
 | `workflows/final.js` | Read-only whole-feature check: test gate first, then three independent concept checks and two extras scouts; returns `tests`, `checks`, `extras`, `missing` |

@@ -1,5 +1,15 @@
 # Working in this repo
 
+## This repo has not been set up yet
+
+It was created from `petermads123/template` and still carries the template's package name and
+version history. **Before anything else in the first conversation, invoke `/setup`.** It asks
+what the repo is for, renames the package, offers the branch ruleset, and then deletes itself
+and this block. If the user arrives with a task instead, say setup comes first and takes a
+few minutes: a rename later touches imports, tests and every file that names the package.
+
+In `petermads123/template` itself this block is expected and `/setup` refuses to run.
+
 @STRUCTURE.md
 
 `STRUCTURE.md` above maps every module, class and function with its signature and return

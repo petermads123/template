@@ -3,6 +3,17 @@
 One entry per version, newest first: what changed, then the files it touched. `/finish`
 writes each entry in the commit that opens the pull request.
 
+## 0.1.2 — 2026-11-04
+
+Adds `/setup`, the one-time setup for a repo made from this template. It asks what the repo
+is for, renames the package, sets the approver, restarts the version history at 0.1.0 and
+offers a branch ruleset that requires CI and merge commits. It then deletes itself and its
+`CLAUDE.md` block in the same commit.
+
+Files:
+- `.claude/skills/setup/` — `SKILL.md`, `main_protect.solo.json`, `main_protect.collab.json`
+- `CLAUDE.md`, `STRUCTURE.md`, `README.md`, `DEVLOG.md`, `pyproject.toml`
+
 ## 0.1.1 — 2026-11-04
 
 Pre-approves the commands an unattended round and `/finish` run on Windows (a PowerShell
