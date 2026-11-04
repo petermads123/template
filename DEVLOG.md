@@ -3,6 +3,16 @@
 One entry per version, newest first: what changed, then the files it touched. `/finish`
 writes each entry in the commit that opens the pull request.
 
+## 0.1.1 — 2026-11-04
+
+Pre-approves the commands an unattended round and `/finish` run on Windows (a PowerShell
+twin of every rule) and the `gh pr` commands `/finish` opens the pull request with, so
+neither stops at a permission prompt.
+
+Files:
+- `.claude/settings.json`
+- `pyproject.toml`, `README.md`, `DEVLOG.md`
+
 ## 0.1.0 — 2026-11-04
 
 The template's first version: the feature pipeline (`/feature`, `/round`, `/finish`), its
