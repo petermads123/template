@@ -23,10 +23,13 @@ rounds.
 ## A. Orient
 
 - `git fetch origin`, `git status --short --branch`.
-- A live feature already exists if any `development/**/brief.json` has status `concept`,
-  `rounds` or `final` (`python .claude/hooks/dev_state.py` prints it). Then do not start a
+- A live feature already exists if any `development/**/brief.json` has status `diagnosis`,
+  `concept`, `rounds` or `final` (`python .claude/hooks/dev_state.py` prints it). Then do not start a
   second one: report the feature, its rounds and the current step, and resume — `concept`
-  here at the stage the brief says, `rounds` with `/round`, `final` with `/finish`. A new
+  here at the stage the brief says, `diagnosis` with `/fix`, `rounds` with `/round`, `final`
+  with `/finish`.
+- A request that reports something existing behaving wrongly is a defect: hand it to `/fix`,
+  which diagnoses before anything is agreed. A new
   request that belongs to that feature goes into it; one that does not waits, or the user
   parks the live one (status `parked`).
 - Read `STRUCTURE.md` before saying anything about the code.

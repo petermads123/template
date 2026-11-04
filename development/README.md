@@ -41,13 +41,14 @@ progress. Add fields freely; never rename or remove one, since a mod may read it
 
 | Field | Values |
 |---|---|
+| `kind` | `feature`, or `fix` for one `/fix` started; absent means `feature` |
 | `bump` | `major`, `minor`, `patch` |
-| `status` | `concept` (talking it through), `rounds` (building), `final` (final check), `review` (pull request open), `parked` |
+| `status` | `diagnosis` (a fix being diagnosed), `concept` (talking it through), `rounds` (building), `final` (final check), `review` (pull request open), `parked` |
 | `current_round` | the round running or next up; 0 before the first |
 | `rounds[].status` | `planned`, `running`, `merged`, `failed` |
 | `pr` | the pull request URL once opened |
 
-Only `concept`, `rounds` and `final` are live: a mod or hook shows nothing for `review` or
+Only `diagnosis`, `concept`, `rounds` and `final` are live: a mod or hook shows nothing for `review` or
 `parked`, so a merged feature never shows as in progress on `main`.
 
 ## `round.json` — written only by the round's steps
@@ -78,3 +79,25 @@ Only `concept`, `rounds` and `final` are live: a mod or hook shows nothing for `
 `/round` creates the file at step 1 when it starts the round; from then on only the round's
 steps write it. A mod shows the round as `round n/len(rounds)` from `brief.json` and the step
 as `step/len(steps)` with `steps[step-1]` from `round.json`.
+
+## `diagnosis/state.json` — a fix only, written by the diagnose workflow's steps
+
+The same fields as `round.json` (without `round`), with the diagnosis's four steps:
+
+```json
+{
+  "schema": 1,
+  "name": "Diagnosis",
+  "branch": "fix/csv-quoting",
+  "status": "running",
+  "step": 2,
+  "steps": ["Reproduce", "Hunt", "Root cause", "Critique"],
+  "attempt": 0,
+  "question": "",
+  "note": "reproduced: a comma inside a field splits it"
+}
+```
+
+`/fix` creates it at step 1; while `brief.json`'s status is `diagnosis`, a mod shows this as
+its own bar instead of the round bar. Beside it: `log.md` (reproduction, candidates, the
+Defect block, the critique) and `test_reproduction.py`, which the fix round moves into `tests/`.

@@ -59,6 +59,7 @@ committed and pushed after every step, so any session resumes where the last one
 development/<branch>/            e.g. development/feat/csv-export/
   BRIEF.md                       the feature in prose: goal, criteria, rounds, decisions
   brief.json                     status and rounds, read by hooks and mods
+  diagnosis/                     a fix only: log.md, state.json, test_reproduction.py
   r<n>-<slug>/                   one folder per round
     log.md                       the round's notepad: concept, plan, changes, results
     round.json                   the round's step and status, read by hooks and mods
@@ -71,6 +72,7 @@ workflow script could not write itself).
 | Stage | Skill | Runs as | Waits for |
 |---|---|---|---|
 | Main Conceptualize: concept, branch name, bump | `/feature` | main session, Opus medium | the user |
+| A fix instead: intake, then diagnosis | `/fix` | main session, Opus medium, with the `diagnose` workflow | the user agrees cause, scope and bump |
 | Narrow down, rounds, BRIEF | `/feature` | main session + 4 `repo-scout`, Sonnet medium, in the background | the user agrees the rounds |
 | Each round, one at a time | `/round` | main session, Sonnet high, coordinating the `round` workflow | only questions the round escalates |
 | Final check, extras, docs, version, pull request | `/finish` | main session, Sonnet high, with the `final` workflow and `docs-writer` | the user, only on a critical extra |
@@ -108,6 +110,24 @@ If a hosted session may push only its own branch, the feature and its rounds run
 branch: `/round` records the round's `branch` as the feature branch and the workflow skips
 the merge.
 
+### A fix
+
+`/fix` replaces `/feature`'s concept stage with a diagnosis, then joins the same pipeline.
+The `diagnose` workflow (`.claude/workflows/diagnose.js`, state in `diagnosis/state.json`):
+
+| # | Step | Agent | Model, effort |
+|---|---|---|---|
+| 1 | Reproduce: the smallest failing test, red for the reported reason | `reproducer` | Sonnet medium |
+| 2 | Hunt: candidate causes through three lenses (trace, history, contract) in parallel | `cause-hunter` × 3 | Sonnet medium |
+| 3 | Root cause: one cause, proven by a reverted change; its class; bug or not | `root-cause-analyst` | Opus high |
+| 4 | Critique: try to falsify it; one revision, then the user decides | `diagnosis-critic` | Opus high |
+
+The user then agrees the cause, the scope (this case or the whole class) and the bump, and the
+rounds run with `kind: "fix"`: the reproduction is the first acceptance criterion, it is run
+red before the fix and green after, and the concept check wants both runs on record. A
+diagnosis that finds no bug (the code does what it promises) parks the fix and hands over to
+`/feature`.
+
 ### Opening the pull request
 
 `/finish` opens the pull request on its own when the final check passes and no extra is
@@ -121,8 +141,9 @@ one line:
 
 | Situation | Route |
 |---|---|
-| A new feature, a behaviour change, a bug fix | `/feature` (a fix is a feature with a `fix/` branch and usually a `patch` bump) |
-| A feature is in flight | its stage: `/feature`, `/round` or `/finish`, as the session brief says |
+| A new feature, a behaviour change | `/feature` |
+| Something that exists behaves wrongly: wrong output, a crash, a check that lets something through | `/fix` |
+| A feature or fix is in flight | its stage: `/feature`, `/fix`, `/round` or `/finish`, as the session brief says |
 | The workflow itself: skills, agents, hooks, CI, `CLAUDE.md` | a `chore/` branch, the change, the gate below, `check_sync.py`, a `patch` bump with a DEVLOG entry, a pull request |
 | A question | an answer, not a pipeline |
 

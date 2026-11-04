@@ -55,3 +55,22 @@ def test_main_emits_session_context(
     payload = json.loads(out.getvalue())
     assert payload["hookSpecificOutput"]["hookEventName"] == "SessionStart"
     assert "feat/x" in payload["hookSpecificOutput"]["additionalContext"]
+
+
+def test_brief_reports_a_diagnosis_in_progress(tmp_path: Path) -> None:
+    feature = read_brief(
+        write_brief(tmp_path, "fix/crash", status="diagnosis", kind="fix", rounds=[])
+    )
+    assert feature is not None
+    made = write_round(
+        feature.folder / "diagnosis",
+        step=1,
+        steps=None,
+        status="blocked",
+        question="Cannot reproduce: which input?",
+    )
+    made.rename(made.with_name("state.json"))
+    text = session_brief.brief(tmp_path, feature)
+    assert "Diagnosis is at step 1/4 Reproduce (blocked)" in text
+    assert "Cannot reproduce" in text
+    assert "Resume with /fix" in text

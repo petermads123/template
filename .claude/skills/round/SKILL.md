@@ -66,6 +66,9 @@ Make sure the round branch is checked out and clean. Call the Workflow tool with
 { "feature_dir": "development/<branch>", "round_dir": "development/<branch>/r<n>-<slug>",
   "round": <n>, "feature_branch": "<branch>", "round_branch": "<round branch>",
   "start_step": <1, or the step to resume>, "attempt": <round.json attempt, 0 to start>,
+  "kind": "<brief.json kind: feature or fix>",
+  "adopt_repro": <for a fix: true while development/<branch>/diagnosis/test_reproduction.py exists
+                  on the feature branch, else false>,
   "answers": [<every answer given in this round so far>] }
 ```
 

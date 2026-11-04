@@ -5,6 +5,9 @@ Every feature branch keeps its state under `development/<branch>/`:
     development/feat/csv-export/
       BRIEF.md                  the feature in prose, written by the main session
       brief.json                the feature's status and its rounds, for hooks and mods
+      diagnosis/                a fix only: written by /fix's diagnose workflow
+        log.md                  reproduction, candidate causes, root cause, critique
+        state.json              the diagnosis's status and step, round.json's shape
       r1-writer-core/
         log.md                  the round's notepad: concept, plan, step notes
         round.json              the round's status and step, for hooks and mods
@@ -33,10 +36,15 @@ GIT_TIMEOUT_SECONDS = 10
 # Feature statuses in `brief.json`. Only the live ones are shown by mods and hooks;
 # `review` is set in the commit that opens the pull request, so `main` never
 # carries a live marker once it merges.
-LIVE_STATUSES = ("concept", "rounds", "final")
+LIVE_STATUSES = ("diagnosis", "concept", "rounds", "final")
 FEATURE_STATUSES = (*LIVE_STATUSES, "review", "parked")
 ROUND_STATUSES = ("planned", "running", "failed", "merged")
 STEP_STATUSES = ("running", "blocked", "failed", "done")
+KINDS = ("feature", "fix")
+DIAGNOSIS_DIR = "diagnosis"
+
+# A fix's diagnosis steps, in order, repeated in its `state.json`.
+DIAGNOSIS_STEPS = ("Reproduce", "Hunt", "Root cause", "Critique")
 
 # The round's steps, in order. `round.json` repeats them so a mod needs no copy.
 ROUND_STEPS = (
@@ -93,6 +101,7 @@ class Brief:
         current_round: The round in progress or next up, 0 before the first.
         rounds: Every planned round, in order.
         pr: The pull request URL once opened, else "".
+        kind: `feature`, or `fix` for one `/fix` started; `feature` when absent.
     """
 
     path: Path
@@ -105,6 +114,7 @@ class Brief:
     current_round: int
     rounds: tuple[RoundEntry, ...]
     pr: str
+    kind: str = "feature"
 
     @property
     def folder(self) -> Path:
@@ -228,6 +238,7 @@ def read_brief(path: Path) -> Brief | None:
         current_round=_int(data, "current_round"),
         rounds=rounds,
         pr=_str(data, "pr"),
+        kind=_str(data, "kind") or "feature",
     )
 
 
@@ -244,11 +255,33 @@ def read_round(path: Path) -> RoundState | None:
     data = _load(path)
     if data is None or _int(data, "round") < 1:
         return None
+    return _state(path, data, ROUND_STEPS)
+
+
+def read_diagnosis(path: Path) -> RoundState | None:
+    """Parse a fix's diagnosis `state.json`, which has `round.json`'s shape.
+
+    Args:
+        path: The file to read.
+
+    Returns:
+        The diagnosis's state with `round` 0, or None if the file is missing or
+        not a JSON object.
+    """
+    data = _load(path)
+    if data is None:
+        return None
+    return _state(path, {**data, "round": 0}, DIAGNOSIS_STEPS)
+
+
+def _state(
+    path: Path, data: dict[str, object], default_steps: tuple[str, ...]
+) -> RoundState:
     raw_steps = data.get("steps")
     steps = (
         tuple(s for s in raw_steps if isinstance(s, str))
         if isinstance(raw_steps, list)
-        else ROUND_STEPS
+        else default_steps
     )
     return RoundState(
         path=path,
@@ -257,7 +290,7 @@ def read_round(path: Path) -> RoundState | None:
         branch=_str(data, "branch"),
         status=_str(data, "status"),
         step=_int(data, "step"),
-        steps=steps or ROUND_STEPS,
+        steps=steps or default_steps,
         attempt=_int(data, "attempt"),
         question=_str(data, "question"),
         note=_str(data, "note"),
@@ -324,6 +357,19 @@ def round_state(brief: Brief, number: int) -> RoundState | None:
     return read_round(brief.folder / entry.folder / "round.json")
 
 
+def diagnosis_state(brief: Brief) -> RoundState | None:
+    """Read a fix's diagnosis state.
+
+    Args:
+        brief: The feature.
+
+    Returns:
+        The diagnosis's state, or None when the feature has none (any feature
+        that is not a fix, or a fix before its diagnosis starts).
+    """
+    return read_diagnosis(brief.folder / DIAGNOSIS_DIR / "state.json")
+
+
 def git_lines(project_dir: Path, args: list[str]) -> list[str]:
     """Run a git command and return its non-empty output lines.
 
@@ -369,7 +415,13 @@ def main() -> None:
     if brief is None:
         print("No feature in flight.")
         return
-    print(f"{brief.title} [{brief.branch}] status={brief.status}")
+    print(f"{brief.title} [{brief.branch}] {brief.kind} status={brief.status}")
+    diagnosis = diagnosis_state(brief)
+    if diagnosis is not None and brief.status == "diagnosis":
+        print(
+            f"diagnosis step {diagnosis.step}/{len(diagnosis.steps)}"
+            f" {diagnosis.step_name} ({diagnosis.status})"
+        )
     for entry in brief.rounds:
         print(f"  round {entry.number}: {entry.name} ({entry.status})")
     state = round_state(brief, brief.current_round)

@@ -4,11 +4,14 @@ from pathlib import Path
 
 import pytest
 from dev_state import (
+    DIAGNOSIS_STEPS,
     ROUND_STEPS,
     active_brief,
     all_briefs,
     current_branch,
+    diagnosis_state,
     read_brief,
+    read_diagnosis,
     read_round,
     round_state,
 )
@@ -175,3 +178,37 @@ def test_current_branch_in_a_repo(tmp_path: Path) -> None:
 
 def test_current_branch_outside_a_repo(tmp_path: Path) -> None:
     assert current_branch(tmp_path / "missing") == ""
+
+
+def test_kind_defaults_to_feature_and_reads_fix(tmp_path: Path) -> None:
+    plain = read_brief(write_brief(tmp_path, "feat/x"))
+    fix = read_brief(write_brief(tmp_path, "fix/y", status="diagnosis", kind="fix"))
+    assert plain is not None and plain.kind == "feature"
+    assert fix is not None and fix.kind == "fix"
+    assert fix.live
+
+
+def test_read_diagnosis_uses_diagnosis_steps(tmp_path: Path) -> None:
+    path = write_round(tmp_path / "diagnosis", step=2, steps=None)
+    state = read_diagnosis(path.rename(path.with_name("state.json")))
+    assert state is not None
+    assert state.round == 0
+    assert state.steps == DIAGNOSIS_STEPS
+    assert state.step_name == "Hunt"
+
+
+@pytest.mark.parametrize("content", ["", "[]", "{"])
+def test_read_diagnosis_rejects_unusable_files(tmp_path: Path, content: str) -> None:
+    path = tmp_path / "state.json"
+    path.write_text(content, encoding="utf-8")
+    assert read_diagnosis(path) is None
+
+
+def test_diagnosis_state_reads_the_diagnosis_folder(tmp_path: Path) -> None:
+    brief = read_brief(write_brief(tmp_path, "fix/y", status="diagnosis", kind="fix"))
+    assert brief is not None
+    assert diagnosis_state(brief) is None
+    made = write_round(brief.folder / "diagnosis", step=3)
+    made.rename(made.with_name("state.json"))
+    state = diagnosis_state(brief)
+    assert state is not None and state.step == 3

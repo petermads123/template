@@ -9,7 +9,7 @@ export const meta = {
   ],
 }
 
-// args (from /finish): { feature_dir, feature_branch }
+// args (from /finish): { feature_dir, feature_branch, kind }   kind "fix" adds the defect-class scout
 // Read-only: nothing here writes, commits or pushes. /finish acts on the result.
 // Returns { tests, checks: [{checker, pass, summary, findings}], extras: [...], missing }
 
@@ -75,6 +75,11 @@ const SCOUTS = {
   critical: 'Look for what would make shipping this feature wrong: unhandled ordinary inputs, broken promises of the BRIEF, security or data-loss risks. Report nothing rather than something minor.',
   value: 'Look for the few follow-ups that would add the most value to this feature for its users. Only the best two or three; none if nothing stands out.',
 }
+if (a.kind === 'fix') {
+  SCOUTS['defect-class'] = 'This is a fix (BRIEF.md has the Defect block). Look for the same cause elsewhere that the ' +
+    'chosen scope left out, and for what let this defect ship (a missing test, an unchecked input, a misleading ' +
+    'docstring). Critical only if a site outside the scope is broken by the same cause in ordinary use.'
+}
 const CHECKERS = 3
 
 // The test gate runs first and alone: the checkers and scouts may run code, and a second
@@ -95,6 +100,7 @@ const checksP = parallel(Array.from({ length: CHECKERS }, (_, i) => () =>
     'nothing half-done, nothing outside the BRIEF shipped by accident?\n' +
     '- Purpose: does it serve the goal, used the way a caller would use it? Run it.\n' +
     '- Acceptance criteria: is every feature-level criterion (F1, F2, ...) met? Cite the code and the test for each.\n' +
+    (a.kind === 'fix' ? '- Fix: is the change at the root cause in the Defect block, with the reproduction now in tests/ and green?\n' : '') +
     'pass=false only for a real gap; mark those findings blocking.',
     { agentType: 'concept-checker', model: 'sonnet', effort: 'low', schema: VERDICT, phase: 'Concept check', label: `check ${i + 1}` })
     .then(v => v && { checker: i + 1, ...v })))

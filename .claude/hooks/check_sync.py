@@ -13,7 +13,8 @@ Checks:
   newest first.
 - `STRUCTURE.md` names every Python file under `src/`, `tests/` and
   `.claude/hooks/`, and names no Python file that does not exist.
-- Every `brief.json` and `round.json` under `development/` parses and uses known
+- Every `brief.json`, `round.json` and diagnosis `state.json` under `development/`
+  parses and uses known
   statuses.
 - With `--base`, the version is above the base's: by exactly the bump this
   branch's brief names, or by any raise on a branch with no brief.
@@ -35,7 +36,9 @@ from pathlib import Path
 
 from dev_state import (
     DEV_DIR,
+    DIAGNOSIS_DIR,
     FEATURE_STATUSES,
+    KINDS,
     ROUND_STATUSES,
     STEP_STATUSES,
     Brief,
@@ -207,7 +210,9 @@ def state_problems(project_dir: Path) -> list[str]:
             problems.append(f"{rel} must hold a JSON object")
         elif path.name == "brief.json":
             problems += _brief_problems(rel, data)
-        elif path.name == "round.json":
+        elif path.name == "round.json" or (
+            path.name == "state.json" and path.parent.name == DIAGNOSIS_DIR
+        ):
             if data.get("status") not in STEP_STATUSES:
                 problems.append(f"{rel} has status {data.get('status')!r}")
             if not isinstance(data.get("step"), int):
@@ -309,6 +314,8 @@ def _brief_problems(rel: str, data: dict[str, object]) -> list[str]:
         found.append(f"{rel} has no feature name")
     if data.get("status") not in FEATURE_STATUSES:
         found.append(f"{rel} has status {data.get('status')!r}")
+    if data.get("kind", "feature") not in KINDS:
+        found.append(f"{rel} has kind {data.get('kind')!r}")
     if data.get("bump") not in BUMPS:
         found.append(f"{rel} has bump {data.get('bump')!r}")
     rounds = data.get("rounds")

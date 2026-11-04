@@ -13,9 +13,9 @@ src/template/           the package (rename for a new repo)
 tests/                  pytest suite, one test_<module>.py per module
 development/            the pipeline's state: one folder per feature branch (see its README)
 .claude/
-  skills/               /feature, /round, /finish; /setup until a new repo has run it
+  skills/               /feature, /fix, /round, /finish; /setup until a new repo has run it
   agents/               the pipeline's agents, one file each
-  workflows/            round.js (one round), final.js (the whole-feature check)
+  workflows/            diagnose.js (a fix's diagnosis), round.js (one round), final.js (the whole-feature check)
   hooks/                session brief, git guard, Ruff on edit, state reader, sync checker
   rules/python.md       coding conventions, loaded for **/*.py
 .github/workflows/      CI: the gate and check_sync
@@ -51,19 +51,22 @@ Reads `brief.json` and `round.json` leniently: a malformed file reads as None.
 | Signature | Returns |
 |---|---|
 | `RoundEntry` | Frozen dataclass: `number`, `name`, `slug`, `branch`, `status`, `summary`; property `folder -> str` (`r<n>-<slug>`). |
-| `Brief` | Frozen dataclass: `path`, `feature`, `title`, `branch`, `bump`, `status`, `summary`, `current_round`, `rounds: tuple[RoundEntry, ...]`, `pr`; properties `folder -> Path`, `live -> bool`; `round_entry(number: int) -> RoundEntry \| None`. |
+| `Brief` | Frozen dataclass: `path`, `feature`, `title`, `branch`, `bump`, `status`, `summary`, `current_round`, `rounds: tuple[RoundEntry, ...]`, `pr`, `kind` (`feature` or `fix`); properties `folder -> Path`, `live -> bool`; `round_entry(number: int) -> RoundEntry \| None`. |
 | `RoundState` | Frozen dataclass: `path`, `round`, `name`, `branch`, `status`, `step`, `steps: tuple[str, ...]`, `attempt`, `question`, `note`; property `step_name -> str`. |
 | `read_brief(path: Path) -> Brief \| None` | One `brief.json`, or None if unusable. |
 | `read_round(path: Path) -> RoundState \| None` | One `round.json`, or None if unusable. |
 | `all_briefs(project_dir: Path) -> list[Brief]` | Every brief under `development/`, newest first. |
 | `active_brief(project_dir: Path, branch: str = "") -> Brief \| None` | The live brief, preferring the checked-out feature or round branch. |
 | `round_state(brief: Brief, number: int) -> RoundState \| None` | That round's `round.json`. |
+| `read_diagnosis(path: Path) -> RoundState \| None` | A fix's diagnosis `state.json`, read as a `RoundState` with `round` 0 and the diagnosis steps. |
+| `diagnosis_state(brief: Brief) -> RoundState \| None` | The feature's `diagnosis/state.json`, or None. |
 | `git_lines(project_dir: Path, args: list[str]) -> list[str]` | Non-empty output lines of a git command, `[]` on failure. |
 | `current_branch(project_dir: Path) -> str` | The checked-out branch, or `""`. |
 | `main() -> None` | Prints the live feature and its current round. |
 
-Constants: `DEV_DIR`, `LIVE_STATUSES`, `FEATURE_STATUSES`, `ROUND_STATUSES`, `STEP_STATUSES`,
-`ROUND_STEPS` (the nine step names).
+Constants: `DEV_DIR`, `DIAGNOSIS_DIR`, `KINDS`, `LIVE_STATUSES`, `FEATURE_STATUSES`,
+`ROUND_STATUSES`, `STEP_STATUSES`, `ROUND_STEPS` (the nine step names), `DIAGNOSIS_STEPS` (the
+four diagnosis steps).
 
 ### `.claude/hooks/session_brief.py`
 
@@ -133,11 +136,14 @@ switches chained with `&&`). Vendored from `template_repo`.
 | Path | Role |
 |---|---|
 | `skills/feature/` | `/feature`: Main Conceptualize (Opus medium), background `repo-scout`s, BRIEF, starts round 1 |
+| `skills/fix/` | `/fix`: intake, runs `workflows/diagnose.js`, agrees cause, scope and bump with the user, then the rounds with `kind: "fix"` |
 | `skills/round/` | `/round`: coordinates one round (Sonnet high), runs `workflows/round.js`, answers or escalates questions |
 | `skills/setup/` | `/setup`: one-time setup of a repo made from the template (purpose, package rename, approver, version 0.1.0, ruleset from its `main_protect.*.json`); deletes itself when done |
 | `skills/finish/` | `/finish`: runs `workflows/final.js`, extras, `docs-writer`, version, pull request |
-| `workflows/round.js` | The nine round steps; args `feature_dir`, `round_dir`, `round`, `feature_branch`, `round_branch`, `start_step`, `attempt`, `answers`; returns `merged`, `needs_input` or `failed` |
+| `workflows/diagnose.js` | A fix's four diagnosis steps; args `feature_dir`, `branch`, `symptom`, `start_step`, `answers`; returns `diagnosed` (with `is_bug` and the `defect`), `needs_input` or `failed` |
+| `workflows/round.js` | The nine round steps; args `feature_dir`, `round_dir`, `round`, `feature_branch`, `round_branch`, `start_step`, `attempt`, `kind`, `answers` (`kind` `fix` adds the fix-round rules); returns `merged`, `needs_input` or `failed` |
 | `workflows/final.js` | Read-only whole-feature check: test gate first, then three independent concept checks and two extras scouts; returns `tests`, `checks`, `extras`, `missing` |
+| `agents/reproducer.md`, `cause-hunter.md`, `root-cause-analyst.md`, `diagnosis-critic.md` | The diagnosis's four steps (`/fix`) |
 | `agents/repo-scout.md` | Read-only investigation for `/feature`, one angle each |
 | `agents/round-conceptualizer.md`, `round-planner.md` | Round steps 1 and 2 (Opus) |
 | `agents/implementer.md` | Step 3, and fix mode for failing gates |

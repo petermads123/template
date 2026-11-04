@@ -10,9 +10,19 @@ is for, renames the package, sets the approver, restarts the version history at 
 offers a branch ruleset that requires CI and merge commits. It then deletes itself and its
 `CLAUDE.md` block in the same commit.
 
+Adds `/fix`: a fix starts with a diagnosis workflow (reproduce, three cause hunters, a proven
+root cause with its class, an adversarial critique), the user agrees cause, scope and bump,
+and the fix then runs through the normal rounds with fix rules: reproduction red before the
+fix and green after. `brief.json` gains `kind` and the `diagnosis` status, with the
+diagnosis's own `state.json` for hooks and mods.
+
 Files:
 - `.claude/skills/setup/` — `SKILL.md`, `main_protect.solo.json`, `main_protect.collab.json`
-- `CLAUDE.md`, `STRUCTURE.md`, `README.md`, `DEVLOG.md`, `pyproject.toml`
+- `.claude/skills/fix/SKILL.md`, `.claude/workflows/diagnose.js`
+- `.claude/agents/` — `reproducer`, `cause-hunter`, `root-cause-analyst`, `diagnosis-critic`
+- `.claude/workflows/round.js`, `final.js`; `.claude/skills/round/`, `finish/`
+- `.claude/hooks/dev_state.py`, `session_brief.py`, `check_sync.py` and their tests
+- `CLAUDE.md`, `STRUCTURE.md`, `README.md`, `DEVLOG.md`, `pyproject.toml`, `development/README.md`
 
 ## 0.1.1 — 2026-11-04
 

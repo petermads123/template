@@ -226,3 +226,26 @@ def test_bump_with_unknown_base(repo_with_base: Path) -> None:
     assert bump_problems(repo_with_base, "nope") == [
         "cannot read pyproject.toml at nope"
     ]
+
+
+def test_state_problems_checks_kind_and_diagnosis_state(tmp_path: Path) -> None:
+    folder = tmp_path / "development" / "fix" / "x"
+    (folder / "diagnosis").mkdir(parents=True)
+    (folder / "brief.json").write_text(
+        json.dumps(
+            {
+                "feature": "x",
+                "status": "diagnosis",
+                "bump": "patch",
+                "kind": "bug",
+                "rounds": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (folder / "diagnosis" / "state.json").write_text(
+        json.dumps({"status": "thinking", "step": 1}), encoding="utf-8"
+    )
+    found = state_problems(tmp_path)
+    assert any("kind 'bug'" in p for p in found)
+    assert any("state.json has status 'thinking'" in p for p in found)
