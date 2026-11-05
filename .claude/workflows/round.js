@@ -25,6 +25,9 @@ export const meta = {
 //   start_step      1..9, where to begin; earlier steps are already done
 //   answers         [{ step, question, answer }] from earlier escalations
 //   attempt         fix attempts already spent this round (round.json "attempt"), default 0
+//   kind            "fix" for a round of a /fix (brief.json kind), else "feature"
+//   adopt_repro     true for the fix round that moves diagnosis/test_reproduction.py into tests/
+//                   (it still exists on the feature branch); false for every later fix round
 //
 // When this returns needs_input or failed, round.json may not say so yet (the script itself
 // cannot write files): /round records it before doing anything else.
@@ -52,6 +55,28 @@ if (!Number.isInteger(START) || START < 1 || START > 9) {
   throw new Error(`round workflow: start_step must be 1..9, got ${a.start_step}`)
 }
 const SAME_BRANCH = a.round_branch === a.feature_branch
+const FIX = a.kind === 'fix'
+const ADOPT = FIX && a.adopt_repro === true
+const REPRO = `${a.feature_dir}/diagnosis/test_reproduction.py`
+
+// The extra rules a fix round follows; empty for a feature round. Only the round that adopts
+// the reproduction runs it red first; later rounds of a fix keep it green.
+const LATER_FIX_RULE = '\nFIX ROUND (a later one): the reproduction already lives in tests/ and is green; keep it ' +
+  'green. Work at the root cause in the Defect block (BRIEF.md), within the chosen scope, with a test for every class ' +
+  'site this round covers.'
+const ADOPT_RULES = {
+  1: `\nFIX ROUND: start from the Defect block in BRIEF.md and the chosen scope. AC1 is "the reproduction ` +
+    `(${REPRO}, moved into tests/) passes"; the last AC is "no regression in the chosen scope", naming the class ` +
+    'sites it covers. Plan nothing beyond the chosen scope.',
+  3: `\nFIX ROUND: before any fix, move the reproduction into the suite (git mv ${REPRO} into tests/, or merge it into ` +
+    'the module\'s test file), run it and record the RED output in log.md. If it already passes, stop and return a ' +
+    'question: the diagnosis no longer holds. Then fix at the root cause the Defect block names - not where the ' +
+    'symptom shows - run it GREEN and record that output too.',
+  8: '\nFIX ROUND: also require, in log.md, the recorded red run and green run of the reproduction; that the change ' +
+    'is at the root cause, not the site of the symptom; and a test for every class site the chosen scope covers. ' +
+    'A green suite alone does not pass a fix round.',
+}
+const fixRule = step => (!FIX ? '' : ADOPT ? ADOPT_RULES[step] || '' : [1, 3, 8].includes(step) ? LATER_FIX_RULE : '')
 const ANSWERS = Array.isArray(a.answers) ? a.answers : []
 
 const RESULT = {
@@ -246,7 +271,7 @@ async function fix(step, what, findings) {
 if (START <= 1) {
   const r = await run(1, 'round-conceptualizer',
     'Isolate the exact scope of this round from BRIEF.md and the earlier rounds\' logs, and write the round concept ' +
-    'into log.md: goal, in scope, out of scope, acceptance criteria (numbered, observable), and risks.',
+    'into log.md: goal, in scope, out of scope, acceptance criteria (numbered, observable), and risks.' + fixRule(1),
     { model: 'opus', effort: 'medium' })
   trace(1, r)
   if (!ok(r)) return stop(1, r)
@@ -266,7 +291,8 @@ if (START <= 2) {
 if (START <= 3) {
   const r = await run(3, 'implementer',
     'Implement the plan in log.md. Record a "Changes" section in log.md listing every public module, class and ' +
-    'function added or changed, with its signature and return type, and any deviation from the plan with the reason.')
+    'function added or changed, with its signature and return type, and any deviation from the plan with the reason.' +
+    fixRule(3))
   trace(3, r)
   if (!ok(r)) return stop(3, r)
 }
@@ -359,7 +385,7 @@ if (START <= 8) {
         'nothing earlier rounds delivered broken?\n' +
         '- Purpose: does it serve the round\'s goal and the feature, used the way a caller would use it? Run it.\n' +
         '- Acceptance criteria: is every AC met? Cite the code and the test that prove each one.\n' +
-        'pass=false only for a real gap; mark those findings blocking, each with what would close it.',
+        'pass=false only for a real gap; mark those findings blocking, each with what would close it.' + fixRule(8),
         null),
         { agentType: 'concept-checker', model: 'sonnet', effort: 'low', schema: VERDICT, phase: 'Concept check', label: `check ${i + 1}` })
         .then(v => v && { checker: i + 1, ...v })))).filter(Boolean)

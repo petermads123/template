@@ -13,7 +13,7 @@ needs no confirmation when everything passes; a critical extra holds it for the 
 ## 1. Final check
 
 Call the Workflow tool with `scriptPath: ".claude/workflows/final.js"` and `args`
-`{ "feature_dir": "development/<branch>", "feature_branch": "<branch>" }`. This skill
+`{ "feature_dir": "development/<branch>", "feature_branch": "<branch>", "kind": "<brief.json kind>" }`. This skill
 instructs you to run it: that is the opt-in it needs. It is read-only and returns the test
 gate, three independent concept verdicts, the extras, and `missing`. It runs in the
 background; when it completes, invoke `/finish` again and continue here.
@@ -65,7 +65,8 @@ Merge the scouts' extras: drop duplicates, keep at most five, best first.
 - Open the pull request to `main` (`gh pr create`, or the GitHub tools where `gh` is not
   available), titled `<feature title> (v<version>)`. Body: the BRIEF's goal; the rounds, one
   line each; the feature's acceptance criteria with how each is met; the version and why that
-  bump; the test gate's summary.
+  bump; the test gate's summary. For a fix (`kind` `fix`), first the Defect block's observed,
+  root cause and chosen scope, so the reviewer checks the fix against the cause.
 - Write the pull request URL into `brief.json` `pr`, commit `feature: record PR`, push.
 
 ## 5. Report

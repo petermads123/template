@@ -12,9 +12,14 @@ import json
 import os
 from pathlib import Path
 
-from dev_state import Brief, active_brief, round_state
+from dev_state import Brief, active_brief, diagnosis_state, round_state
 
-RESUME_SKILL = {"concept": "/feature", "rounds": "/round", "final": "/finish"}
+RESUME_SKILL = {
+    "diagnosis": "/fix",
+    "concept": "/feature",
+    "rounds": "/round",
+    "final": "/finish",
+}
 
 
 def brief(project_dir: Path, feature: Brief) -> str:
@@ -32,6 +37,14 @@ def brief(project_dir: Path, feature: Brief) -> str:
         f"Feature in flight: {feature.title or feature.feature} on {feature.branch}"
         f" (status {feature.status}, bump {feature.bump}). State: {folder}/.",
     ]
+    diagnosis = diagnosis_state(feature)
+    if diagnosis is not None and feature.status == "diagnosis":
+        lines.append(
+            f"Diagnosis is at step {diagnosis.step}/{len(diagnosis.steps)}"
+            f" {diagnosis.step_name} ({diagnosis.status})."
+        )
+        if diagnosis.question:
+            lines.append(f"Open question: {diagnosis.question}")
     for entry in feature.rounds:
         lines.append(f"- round {entry.number} {entry.name}: {entry.status}")
     state = round_state(feature, feature.current_round)
