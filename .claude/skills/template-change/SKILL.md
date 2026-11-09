@@ -68,9 +68,12 @@ Repos made from the template, or moved onto its pipeline:
 
 The table can fall behind. Before starting, list the user's repositories
 (`mcp__claude-code-remote__list_repos`) and look for any other repo with
-`.claude/workflows/round.js` and `.claude/hooks/dev_state.py`; a repo that has them belongs
-here. Add it to this table in the template's pull request, and say so to the user. A repo not
-attached to the session is added with `add_repo` (push access).
+`.claude/workflows/round.js` and `.claude/hooks/dev_state.py`. A repo that has them and is
+not in the table may belong here, but **always ask the user before adding it**, one question
+per repo: name it and what you found. Only on a yes add it to this table in the template's
+pull request and give it a pull request in section 5; on a no leave it out of both. Never add
+a repo, or open a pull request in one, without that yes. A repo not attached to the session is
+added with `add_repo` (push access) after the yes.
 
 ## 5. Carry the change into each repo (one pull request per repo)
 

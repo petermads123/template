@@ -10,7 +10,7 @@ pipeline or template-only, makes it here with a patch bump, and for a pipeline c
 one pull request in each repo made from the template, applying the template's own diff with
 `git apply -3` and merging by hand where a repo changed the file, so its repo-specific parts
 survive. Its table lists those repos and what each keeps; it also checks the user's
-repositories for one the table misses. It never merges. `/setup` deletes it, with itself and
+repositories for one the table misses and asks before adding it. It never merges. `/setup` deletes it, with itself and
 its references, so a repo made from the template never pushes into other repos; setup's
 `STRUCTURE.md` instructions now also name `/fix`.
 
