@@ -227,7 +227,7 @@ def test_top_hook_does_not_select_the_hook_it_imports(repo: Path) -> None:
         "conftest.py",
         "tests/helpers.py",
         "tests/fixtures/data.json",
-        "data/table.csv",
+        "assets/table.csv",
         "src/pkg/py.typed",
         "script.py",
     ],
