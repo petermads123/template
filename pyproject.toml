@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "template"
-version = "0.2.0"
+version = "0.2.1"
 description = "Template for Python repositories developed with Claude Code"
 authors = [
   { name = "Peter Mads Pedersen", email = "petermads123@hotmail.com" }
