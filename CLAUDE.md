@@ -8,7 +8,10 @@ what the repo is for, renames the package, offers the branch ruleset, and then d
 and this block. If the user arrives with a task instead, say setup comes first and takes a
 few minutes: a rename later touches imports, tests and every file that names the package.
 
-In `petermads123/template` itself this block is expected and `/setup` refuses to run.
+In `petermads123/template` itself this block is expected and `/setup` refuses to run. There,
+every change goes through `/template-change`: it makes the change in the template and then
+opens a pull request in each repo made from it, so they all run the latest pipeline. `/setup`
+deletes that skill along with this block.
 
 @STRUCTURE.md
 
