@@ -1,6 +1,6 @@
 ---
 name: setup
-description: One-time setup of a repo created from this template — asks what the repo is for, renames the package, sets the approver, starts the version history at 0.1.0, offers the branch ruleset, then deletes itself and its reference in CLAUDE.md in the same commit so it can never run twice. Use at the start of the first conversation in a fresh repo made from the template, whether the user names the skill or not.
+description: One-time setup of a repo created from this template — asks what the repo is for, renames the package, sets the approver, starts the version history at 0.1.0, offers the branch ruleset, then deletes itself, the template-only /template-change skill and their references in CLAUDE.md in the same commit so neither can ever run. Use at the start of the first conversation in a fresh repo made from the template, whether the user names the skill or not.
 argument-hint: "[what the repo is for, optionally]"
 model: opus
 effort: medium
@@ -11,7 +11,9 @@ effort: medium
 Runs once, in the first conversation of a repo created from `petermads123/template`. It turns
 the template into *this* repo and then removes itself: the skill folder, its block in
 `CLAUDE.md` and its row in `STRUCTURE.md` are deleted in the same commit as the setup, so
-nothing is left that could run it again.
+nothing is left that could run it again. The same commit deletes `/template-change`, the skill
+for changing the template itself and carrying the change to the repos made from it: it means
+nothing outside the template.
 
 Three things only the user knows: what the repo is for, the package name, and whether anyone
 else works in it. Ask all three up front (steps 3 and 4), then make every change without
@@ -65,7 +67,7 @@ it.
 | `pyproject.toml` | `[project] name` and `description`; `version` to `0.1.0`; `authors` stays if it is the user (`git config user.name`), else ask |
 | `tests/test_hello_world.py` | `from <package>.hello_world import main` |
 | `README.md` | Title `# <repo name>`; **replace** the opening paragraph with the description; `**Version:** 0.1.0`; the packages row (`<package>`, `<package>.hello_world.main()`); delete the "New repo from this template" paragraph |
-| `STRUCTURE.md` | In the tree: `src/<package>/` with the note "the package" (drop "rename for a new repo"), and the `skills/` line back to `/feature, /round, /finish`; the `src/template/...` headings; delete the `skills/setup/` row |
+| `STRUCTURE.md` | In the tree: `src/<package>/` with the note "the package" (drop "rename for a new repo"), and the `skills/` line back to `/feature, /fix, /round, /finish`; the `src/template/...` headings; delete the `skills/setup/` and `skills/template-change/` rows |
 | `DEVLOG.md` | Keep the title and its intro paragraph, and replace every entry (they record the template's history, not this repo's) with exactly this one, filled in: |
 | `CLAUDE.md` | The approver in "Review and merge": the remote's owner unless the user names someone else; delete the "This repo has not been set up yet" block |
 
@@ -84,8 +86,9 @@ Then check nothing is left behind:
 - `git grep -n -w template -- ':!.venv'` — clear every hit that names the package. Prose about
   where the repo came from (`petermads123/template`, `template_repo`, the `.gitignore`
   comments) stays.
-- `git grep -n -i setup -- ':!.venv' ':!.claude/skills/setup'` — clear every hit about this
-  skill; "the setup guide" and the README's "Setup" heading are about installing and stay.
+- `git grep -n -i setup -- ':!.venv' ':!.claude/skills/setup'` and
+  `git grep -n template-change -- ':!.venv' ':!.claude/skills'` — clear every hit about this
+  skill or `/template-change`; "the setup guide" and the README's "Setup" heading are about installing and stay.
 
 `[tool.setuptools.packages.find]` points at `src` and `[tool.mypy] files` names directories, so
 neither needs a change; read them to confirm.
@@ -117,11 +120,12 @@ Applying it changes the repository's settings, so it needs the user's yes. With 
 possible here, say so plainly, give the copied file's path, and the path in the GitHub UI:
 *Settings → Rules → Rulesets → New ruleset → Import a ruleset*.
 
-## 7. Delete this skill
+## 7. Delete this skill and `/template-change`
 
-`git rm -r .claude/skills/setup` — this file and its rulesets. Its block in `CLAUDE.md` and
-its lines in `STRUCTURE.md` went in step 5. After this the repo holds nothing that runs setup
-again.
+`git rm -r .claude/skills/setup .claude/skills/template-change` — this file and its rulesets,
+and the template-only skill that changes the template and its downstream repos. Their block in
+`CLAUDE.md` and their lines in `STRUCTURE.md` went in step 5. After this the repo holds nothing
+that runs setup again, and nothing that would push this repo's changes into other repos.
 
 ## 8. Check and commit
 

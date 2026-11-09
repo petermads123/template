@@ -13,7 +13,7 @@ src/template/           the package (rename for a new repo)
 tests/                  pytest suite, one test_<module>.py per module
 development/            the pipeline's state: one folder per feature branch (see its README)
 .claude/
-  skills/               /feature, /fix, /round, /finish; /setup until a new repo has run it
+  skills/               /feature, /fix, /round, /finish; /setup and /template-change until a new repo has run setup
   agents/               the pipeline's agents, one file each
   workflows/            diagnose.js (a fix's diagnosis), round.js (one round), final.js (the whole-feature check)
   hooks/                session brief, git guard, Ruff on edit, state reader, sync checker, test selector
@@ -160,7 +160,8 @@ switches chained with `&&`). Vendored from `template_repo`.
 | `skills/feature/` | `/feature`: Main Conceptualize (Opus medium), background `repo-scout`s, BRIEF, starts round 1 |
 | `skills/fix/` | `/fix`: intake, runs `workflows/diagnose.js`, agrees cause, scope and bump with the user, then the rounds with `kind: "fix"` |
 | `skills/round/` | `/round`: coordinates one round (Sonnet high), runs `workflows/round.js`, answers or escalates questions |
-| `skills/setup/` | `/setup`: one-time setup of a repo made from the template (purpose, package rename, approver, version 0.1.0, ruleset from its `main_protect.*.json`); deletes itself when done |
+| `skills/setup/` | `/setup`: one-time setup of a repo made from the template (purpose, package rename, approver, version 0.1.0, ruleset from its `main_protect.*.json`); deletes itself and `skills/template-change/` when done |
+| `skills/template-change/` | `/template-change`: template only; a change to the template, then one pull request per downstream repo (its table lists them and their repo-specific parts) carrying the pipeline files; deleted by `/setup` |
 | `skills/finish/` | `/finish`: runs `workflows/final.js`, extras, `docs-writer`, version, pull request, then CI through to green |
 | `workflows/diagnose.js` | A fix's four diagnosis steps; args `feature_dir`, `branch`, `symptom`, `start_step`, `answers`; returns `diagnosed` (with `is_bug` and the `defect`), `needs_input` or `failed` |
 | `workflows/round.js` | The nine round steps (step 7 runs the tests `select_tests.py` picks against the feature branch, `--ff` plus the earlier failures in the fix loop); args `feature_dir`, `round_dir`, `round`, `feature_branch`, `round_branch`, `start_step`, `attempt`, `kind`, `answers` (`kind` `fix` adds the fix-round rules); returns `merged`, `needs_input` or `failed` |

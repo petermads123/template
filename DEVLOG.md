@@ -3,6 +3,21 @@
 One entry per version, newest first: what changed, then the files it touched. `/finish`
 writes each entry in the commit that opens the pull request.
 
+## 0.2.2 — 2026-11-09
+
+Adds `/template-change`, the skill for changing the template itself. It classifies a change as
+pipeline or template-only, makes it here with a patch bump, and for a pipeline change opens
+one pull request in each repo made from the template, applying the template's own diff with
+`git apply -3` and merging by hand where a repo changed the file, so its repo-specific parts
+survive. Its table lists those repos and what each keeps; it also checks the user's
+repositories for one the table misses. It never merges. `/setup` deletes it, with itself and
+its references, so a repo made from the template never pushes into other repos; setup's
+`STRUCTURE.md` instructions now also name `/fix`.
+
+Files:
+- `.claude/skills/template-change/SKILL.md` (new), `.claude/skills/setup/SKILL.md`
+- `CLAUDE.md`, `STRUCTURE.md`, `README.md`, `DEVLOG.md`, `pyproject.toml`
+
 ## 0.2.1 — 2026-11-09
 
 The concept conversation asks one question at a time. In `/feature` every turn that waits
