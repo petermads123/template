@@ -65,6 +65,7 @@ Repos made from the template, or moved onto its pipeline:
 | `petermads123/energydata` | `.claude/rules/structure-*.md`; the live tests and API keys in `CLAUDE.md`; `DEVELOPMENT.md` |
 | `petermads123/energy_optimization` | `CLAUDE.md` "What this project is"; `DEVELOPMENT.md` |
 | `petermads123/valg_data` | `CLAUDE.md` "What this project is"; the fixtures rule; `DEVELOPMENT.md` |
+| `petermads123/home-assistant` | Not a Python package: the config of a running Home Assistant, with no `src/`, no `/setup` and no `/template-change`. Its own list is in its `development/README.md` ("Repo-specific parts") and wins over this row: `PROJECT_RULES` in all three workflows and "the tests folder that fits the code" in `round.js`; `CODE_DIRS` in `check_sync.py` and its tests' paths; the folders named in `test-writer.md`, `docs-writer.md` and `rules/python.md`; `rules/appdaemon.md` and `rules/docs.md`; `/finish` filling in the pull request template and handing over to `/deploy`; the skills `deploy`, `ha-change` and `dashboard`; the connector rules, the denies and `yamllint` in `settings.json`; the extra steps in `check.yml`; `pyproject.toml` without a package, with two `testpaths`; `CLAUDE.md` and `README.md` as a whole. The pipeline description this template keeps in `CLAUDE.md` lives there in `development/README.md`: carry workflow changes into that file |
 
 The table can fall behind. Before starting, list the user's repositories
 (`mcp__claude-code-remote__list_repos`) and look for any other repo with
