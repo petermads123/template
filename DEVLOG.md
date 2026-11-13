@@ -3,6 +3,17 @@
 One entry per version, newest first: what changed, then the files it touched. `/finish`
 writes each entry in the commit that opens the pull request.
 
+## 0.2.3 — 2026-11-13
+
+Adds `petermads123/home-assistant` to the repos `/template-change` carries pipeline changes
+into. It is the configuration of a running Home Assistant rather than a Python package, so
+its row names more repo-specific parts than the others and points at the list that repo
+keeps in its own `development/README.md`. Template-only: nothing goes downstream.
+
+Files:
+- `.claude/skills/template-change/SKILL.md`
+- `README.md`, `DEVLOG.md`, `pyproject.toml`
+
 ## 0.2.2 — 2026-11-09
 
 Adds `/template-change`, the skill for changing the template itself. It classifies a change as
