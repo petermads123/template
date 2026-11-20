@@ -20,7 +20,7 @@ change is not done until every downstream repo has its pull request.
 
 | Kind | Touches | Downstream |
 |---|---|---|
-| **Pipeline** | `.claude/skills/{feature,fix,round,finish}/`, `.claude/agents/`, `.claude/workflows/`, `.claude/hooks/` and their tests, `.claude/settings.json`, `.claude/rules/python.md`, `development/README.md`, `.github/workflows/check.yml`, the workflow sections of `CLAUDE.md` and `STRUCTURE.md` | every repo in section 4 |
+| **Pipeline** | `.claude/skills/{feature,fix,round,finish}/`, `.claude/agents/`, `.claude/workflows/`, `.claude/hooks/` and their tests, the root `conftest.py`, `.claude/settings.json`, `.claude/rules/python.md`, `development/README.md`, `.github/workflows/check.yml`, the workflow sections of `CLAUDE.md` and `STRUCTURE.md` | every repo in section 4 |
 | **Template-only** | `/setup` and its rulesets, this skill, the placeholder package `src/template/`, the "not set up yet" block in `CLAUDE.md`, the template's own `README.md` prose | none: say so, and stop after section 3 |
 
 A change that is both is a pipeline change; only its pipeline files go downstream.
