@@ -3,6 +3,21 @@
 One entry per version, newest first: what changed, then the files it touched. `/finish`
 writes each entry in the commit that opens the pull request.
 
+## 0.2.4 — 2026-11-20
+
+Test runs now report their progress live. A small pytest plugin, `pytest_progress.py`, loaded
+for every run by `-p pytest_progress` in `pyproject.toml`'s `addopts`, keeps `.pytest_cache/progress.json` current while
+tests run: how many were collected, how many are done, passed, failed and skipped, the test
+running now, and whether the run has finished. The `feature-band` mod (0.3.0) reads it and
+draws a bar above the round and step bars, so step 7 of a round and the final check show
+where they are instead of going quiet. Nothing in the agents or workflows changes: any pytest
+run in the repo writes the file, it is ignored by git, and a file that cannot be written never
+fails a run.
+
+Files:
+- `.claude/hooks/pytest_progress.py`, `tests/test_pytest_progress.py`
+- `CLAUDE.md`, `STRUCTURE.md`, `README.md`, `DEVLOG.md`, `pyproject.toml`
+
 ## 0.2.3 — 2026-11-13
 
 Adds `petermads123/home-assistant` to the repos `/template-change` carries pipeline changes

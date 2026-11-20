@@ -3,7 +3,7 @@
 A template for Python repositories developed with Claude Code: a feature pipeline that runs
 each feature in rounds, with its progress kept in files a Claude Code mod can display.
 
-**Version:** 0.2.3
+**Version:** 0.2.4
 
 ## Packages
 
