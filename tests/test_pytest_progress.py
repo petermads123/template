@@ -207,9 +207,12 @@ def test_a_deselected_test_is_not_in_the_total(tmp_path: Path) -> None:
     )
 
 
-def test_the_root_conftest_loads_the_plugin() -> None:
-    conftest = HOOKS.parent.parent / "conftest.py"
-    assert '"pytest_progress"' in conftest.read_text(encoding="utf-8")
+def test_every_run_in_this_repo_loads_the_plugin(
+    pytestconfig: pytest.Config,
+) -> None:
+    pyproject = (HOOKS.parent.parent / "pyproject.toml").read_text(encoding="utf-8")
+    assert "-p pytest_progress" in pyproject
+    assert pytestconfig.pluginmanager.has_plugin("pytest_progress")
 
 
 def test_main_reports_the_last_run(

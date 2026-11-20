@@ -19,7 +19,6 @@ development/            the pipeline's state: one folder per feature branch (see
   hooks/                session brief, git guard, Ruff on edit, state reader, sync checker, test selector, pytest progress
   rules/python.md       coding conventions, loaded for **/*.py
 .github/workflows/      CI: the gate and check_sync
-conftest.py             loads the pytest progress plugin for every run
 pyproject.toml          package, version, Ruff/mypy/pytest config
 CLAUDE.md               routing map and rules for Claude
 README.md               short: version, packages and entry points
@@ -118,7 +117,7 @@ the tests that name it. Module roots come from `pythonpath` and `testpaths`;
 
 ### `.claude/hooks/pytest_progress.py`
 
-Pytest plugin, loaded for every run by the root `conftest.py`: keeps
+Pytest plugin, loaded for every run by `-p pytest_progress` in `pyproject.toml`'s `addopts`: keeps
 `.pytest_cache/progress.json` (ignored by git) current while tests run, so the `feature-band`
 mod can draw a live bar with the passed and failed counts. Best-effort: a file that cannot be
 written never fails a run. Nothing is written for `--collect-only`; under xdist only the

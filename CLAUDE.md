@@ -194,7 +194,7 @@ python .claude/hooks/select_tests.py --base <ref>      # the tests a change can 
   round never stalls on a prompt; the guard is what keeps that safe.
 - **After every `Write`/`Edit` of a `.py` file**, `lint_py.py` runs `ruff format` and
   `ruff check --fix` on it.
-- **During every pytest run**, `pytest_progress.py` (loaded by the root `conftest.py`) keeps
+- **During every pytest run**, `pytest_progress.py` (loaded by `addopts` in `pyproject.toml`) keeps
   `.pytest_cache/progress.json` current: collected, done, passed, failed, the test running
   now. The `feature-band` mod draws it as a live bar above the round and step bars, so the
   test step shows its progress while it runs. The file is ignored by git.

@@ -1,6 +1,6 @@
 """Pytest plugin: writes a run's live progress to a file a mod can draw as a bar.
 
-Loaded for every pytest run by the root `conftest.py`. While tests run it keeps
+Loaded for every pytest run by `-p pytest_progress` in `pyproject.toml`'s `addopts`. While tests run it keeps
 `.pytest_cache/progress.json` under the root directory current: how many tests were
 collected, how many are done, passed, failed and skipped, the test running now, and whether
 the run has finished. The `feature-band` mod polls that file and shows the bar above the
